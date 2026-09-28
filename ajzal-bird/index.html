@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Red Head Flappy</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,sans-serif;background:#77d8ff}
+body{display:flex;align-items:center;justify-content:center}
+#gameWrap{position:relative;width:min(100vw,520px);height:min(100vh,820px);overflow:hidden;background:linear-gradient(#77d8ff 0%,#b7efff 72%,#e8d39b 72%,#d7bc79 100%);box-shadow:0 0 35px #0005}
+canvas{display:block;width:100%;height:100%}
+#ui{position:absolute;inset:0;pointer-events:none}
+#score{position:absolute;top:20px;left:0;right:0;text-align:center;color:white;font-size:54px;font-weight:900;text-shadow:0 4px 0 #0008}
+#message{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:82%;text-align:center;background:#07111ee8;color:#fff;padding:28px 22px;border-radius:22px;border:2px solid #ffffff33;pointer-events:auto}
+#message h1{margin:0 0 10px;font-size:34px}#message p{margin:8px 0;color:#dce9f2}
+button{border:0;border-radius:12px;padding:13px 25px;background:#e53935;color:#fff;font-weight:800;font-size:17px;cursor:pointer;box-shadow:0 5px 0 #9e1c1c}
+button:active{transform:translateY(3px);box-shadow:0 2px 0 #9e1c1c}.hidden{display:none!important}
+.back{position:absolute;top:14px;left:14px;z-index:5;color:#fff;text-decoration:none;background:#07111ecc;border:1px solid #ffffff33;border-radius:10px;padding:8px 11px;font-size:12px;font-weight:700;pointer-events:auto}.back:hover{background:#07111ef5}#hint{position:absolute;bottom:15px;left:0;right:0;text-align:center;color:#ffffffd9;font-size:13px;text-shadow:0 2px 3px #0008}
+</style></head>
+<body>
+<div id="gameWrap"><a class="back" href="../">← YK PRODUCTIONS</a><canvas id="game"></canvas><div id="ui">
+<div id="score">0</div><div id="message"><h1>GAME OVER</h1><p>Score: <b>0</b><br>Tap below to play again.</p><button id="startBtn">PLAY AGAIN</button></div>
+<div id="hint">Tap / Click / Space = flap • EASY MODE</div></div></div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),wrap=document.getElementById('gameWrap');
+const scoreEl=document.getElementById('score'),msg=document.getElementById('message'),startBtn=document.getElementById('startBtn');
+const headImg=new Image();headImg.src='bird-head.png';
+let W,H,dpr,bird,pipes,score,running=false,started=false,last=0,ground=0,spawn=0;
+const gravity=760,flap=-330,speed=105,pipeW=64,gap=270;
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=wrap.clientWidth;H=wrap.clientHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ground=H*.72}
+addEventListener('resize',resize);resize();
+function reset(){bird={x:W*.27,y:H*.40,vy:0,r:29,rot:0};pipes=[];score=0;spawn=0;running=true;started=true;scoreEl.textContent='0';msg.classList.add('hidden');startBtn.textContent='RESTART';last=performance.now();requestAnimationFrame(loop)}
+function end(){if(!running)return;running=false;document.querySelector('#message h1').textContent='GAME OVER';document.querySelector('#message p').innerHTML='Score: <b>'+score+'</b><br>Try again!';startBtn.textContent='RESTART';msg.classList.remove('hidden')}
+function flapBird(){if(!started||!running){reset();return}bird.vy=flap}
+function addPipe(){const min=100,max=ground-100-gap,top=min+Math.random()*Math.max(1,max-min);pipes.push({x:W+30,top,passed:false})}
+function hit(cx,cy,r,rx,ry,rw,rh){const x=Math.max(rx,Math.min(cx,rx+rw)),y=Math.max(ry,Math.min(cy,ry+rh));const dx=cx-x,dy=cy-y;return dx*dx+dy*dy<r*r}
+function background(){ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(255,255,255,.62)';for(const c of [{x:W*.15,y:H*.15,s:1},{x:W*.68,y:H*.23,s:.8},{x:W*.45,y:H*.08,s:.55}]){ctx.beginPath();ctx.arc(c.x,c.y,28*c.s,0,Math.PI*2);ctx.arc(c.x+30*c.s,c.y+5,22*c.s,0,Math.PI*2);ctx.arc(c.x-27*c.s,c.y+8,18*c.s,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#d7bc79';ctx.fillRect(0,ground,W,H-ground);ctx.fillStyle='#a8d85b';ctx.fillRect(0,ground,W,10)}
+function pipe(p){const cap=10;ctx.fillStyle='#31a852';ctx.strokeStyle='#176f35';ctx.lineWidth=3;ctx.fillRect(p.x,0,pipeW,p.top);ctx.strokeRect(p.x,0,pipeW,p.top);ctx.fillRect(p.x,p.top+gap,pipeW,ground-p.top-gap);ctx.strokeRect(p.x,p.top+gap,pipeW,ground-p.top-gap);ctx.fillStyle='#48c968';ctx.fillRect(p.x-5,p.top-18,pipeW+10,18);ctx.strokeRect(p.x-5,p.top-18,pipeW+10,18);ctx.fillRect(p.x-5,p.top+gap,pipeW+10,18);ctx.strokeRect(p.x-5,p.top+gap,pipeW+10,18)}
+function drawBird(){ctx.save();ctx.translate(bird.x,bird.y);bird.rot=Math.max(-.5,Math.min(1.1,bird.vy/700));ctx.rotate(bird.rot);ctx.fillStyle='#e53935';ctx.strokeStyle='#8f1717';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(-2,5,43,31,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#ff5a54';ctx.beginPath();ctx.ellipse(-18,13,24,13,-.3,0,Math.PI*2);ctx.fill();ctx.stroke();if(headImg.complete)ctx.drawImage(headImg,-58,-118,130,176);ctx.fillStyle='#ffb300';ctx.strokeStyle='#8c5b00';ctx.beginPath();ctx.moveTo(35,-2);ctx.lineTo(67,7);ctx.lineTo(35,15);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore()}
+function loop(now){if(!running)return;const dt=Math.min((now-last)/1000,.032);last=now;bird.vy+=gravity*dt;bird.y+=bird.vy*dt;spawn+=dt;if(spawn>1.9){spawn=0;addPipe()}for(const p of pipes){p.x-=speed*dt;if(!p.passed&&p.x+pipeW<bird.x){p.passed=true;score++;scoreEl.textContent=score}if(hit(bird.x,bird.y,bird.r,p.x,0,pipeW,p.top)||hit(bird.x,bird.y,bird.r,p.x,p.top+gap,pipeW,ground-p.top-gap))end()}pipes=pipes.filter(p=>p.x>-100);if(bird.y-bird.r<0||bird.y+bird.r>ground)end();background();pipes.forEach(pipe);drawBird();requestAnimationFrame(loop)}
+function action(e){if(e)e.preventDefault();flapBird()}
+canvas.addEventListener('pointerdown',action);addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();action(e)}});startBtn.addEventListener('click',e=>{e.stopPropagation();reset()});background();reset();
+</script></body></html>
